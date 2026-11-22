@@ -1,133 +1,56 @@
-name: Build SM74 Android APK (Makefile)
+name: Build SM74 Android APK
 
 on:
   push:
-    branches: [ sm74 ]
+    branches: [ sm74 ] # 确保只监听 sm74 分支
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: sm74
-          submodules: recursive # 确保拉取所有子模块
+          submodules: recursive
 
+      # 环境配置...
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-
       - name: Set up Android SDK & NDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: 'platform-tools'
-
       - name: Install NDK
         run: sdkmanager "ndk;27.2.12479018"
-
       - name: Install Host Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libsdl2-dev libglew-dev zip unzip
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev libglew-dev
 
-      - name: Increase Swap Space
-        run: |
-          sudo swapoff /swapfile || true
-          sudo rm -f /swapfile
-          sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-          free -h
-
-      # 1. 将 ROM 复制到 Makefile 期望的位置
       - name: Prepare ROM
         run: |
-          if [ ! -f "baserom.us.z64" ]; then
-            echo "Error: baserom.us.z64 not found in root."
-            exit 1
-          fi
-          # 根据之前截图，Makefile 可能期望在根目录或 app/jni/src 下
-          mkdir -p app/jni/src
-          cp baserom.us.z64 app/jni/src/baserom.us.z64
-          cp baserom.us.z64 app/jni/src/
-          ls -lh baserom.us.z64 app/jni/src/baserom.us.z64
+          cp baserom.us.z64 app/jni/src/baserom.us.z64 || true
+          cp baserom.us.z64 . || true
 
-      # 2. 获取 SDL 依赖（如果 getSDL.sh 存在）
       - name: Get SDL Dependencies
         run: |
           if [ -f "getSDL.sh" ]; then
             chmod +x getSDL.sh
             ./getSDL.sh
-          else
-            echo "getSDL.sh not found. Skipping."
           fi
 
-      # 3. 原生编译 (核心步骤)
-      - name: Native Build (Make)
-        working-directory: app/jni/src # 假设 Makefile 在此目录，若在根目录请改为 .
-        env:
-          TOUCH_CONTROLS: 1
-          RENDER_API: GL
-          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.2.12479018
-          CPPFLAGS: "-I${{ github.workspace }}/app/jni/SDL/include"
+      # 编译核心
+      - name: Native Build
         run: |
-          # 清理旧的构建产物
+          echo "当前目录:"
+          pwd
+          ls -la
+          
+          # 直接在当前目录 make
           make clean || true
-          # 编译，根据经验可能需要执行两次
-          echo "Starting first make pass..."
           make -j$(nproc) || true
-          echo "Starting second make pass..."
           make -j$(nproc)
-          # 查找生成的 .so 文件
-          echo "Looking for compiled .so files..."
-          find . -name "*.so" -type f
-
-      # 4. 手动组装并签名 APK
-      - name: Package and Sign APK
-        run: |
-          # 进入预编译的 Android 壳目录
-          cd platform/android
           
-          # 创建临时构建目录
-          mkdir -p apk_build
-          cd apk_build
-          
-          # 复制现有的资源、DEX 和 Manifest
-          # 注意：路径基于截图中的 platform/android/android 文件夹
-          cp ../android/AndroidManifest.xml .
-          cp ../android/classes.dex .
-          cp ../android/resources.arcs .
-          
-          # 创建 lib 目录并放入编译好的 .so 文件
-          mkdir -p lib/arm64-v8a
-          # 【重要】请根据上一步 find 命令的实际输出，修改下面的查找路径
-          # 示例：find ../../app/jni/src -name "*.so" -exec cp {} lib/arm64-v8a/ \;
-          echo "Please manually verify and copy .so files to lib/arm64-v8a/"
-          
-          # 重新打包成 zip 并改名为 apk
-          zip -r ../app-unsigned.apk *
-          cd ..
-          
-          # 使用 zipalign 对齐
-          zipalign -p 4 app-unsigned.apk app-aligned.apk
-          
-          # 使用截图中的 key.pk8 和 certificate.pem 进行签名
-          # 注意：certificate.pem 可能需要转换为 DER 格式
-          # openssl x509 -in certificate.pem -outform DER -out cert.der
-          apksigner sign --key key.pk8 --cert certificate.pem --out final.apk app-aligned.apk
-          
-          echo "APK packaging complete."
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: sm74-apk
-          path: platform/android/final.apk
-          if-no-files-found: error
+          echo "查找编译出的 so 文件:"
+          find . -name "*.so"
