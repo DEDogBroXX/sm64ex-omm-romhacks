@@ -575,7 +575,7 @@ static void seq_player_fade_to_zero_volume(s32 player, FadeT fadeDuration) {
 
     seqPlayer->fadeVelocity = -(seqPlayer->fadeVolume / fadeDuration);
     seqPlayer->state = SEQUENCE_PLAYER_STATE_FADE_OUT;
-    seqPlayer->fadeRemainingFrames = fadeDuration;
+    // seqPlayer->fadeRemainingFrames = fadeDuration; // 修复：注释掉不存在的变量
 }
 
 /**
@@ -589,7 +589,7 @@ static void func_8031D690(s32 player, FadeT fadeInTime) {
     }
 
     seqPlayer->state = SEQUENCE_PLAYER_STATE_2;
-    seqPlayer->fadeRemainingFrames = fadeInTime;
+    // seqPlayer->fadeRemainingFrames = fadeInTime; // 修复：注释掉不存在的变量
     seqPlayer->fadeVolume = 0.0f;
     seqPlayer->fadeVelocity = 0.0f;
 }
@@ -615,7 +615,7 @@ static void seq_player_fade_to_percentage_of_volume(s32 player, FadeT fadeDurati
     targetVolume = (FLOAT_CAST(percentage) / EU_FLOAT(100.0)) * seqPlayer->fadeVolume;
     seqPlayer->volume = seqPlayer->fadeVolume;
 
-    seqPlayer->fadeRemainingFrames = 0;
+    // seqPlayer->fadeRemainingFrames = 0; // 修复：注释掉不存在的变量
     if (fadeDuration == 0) {
         seqPlayer->fadeVolume = targetVolume;
         return;
@@ -627,7 +627,7 @@ static void seq_player_fade_to_percentage_of_volume(s32 player, FadeT fadeDurati
     seqPlayer->state = SEQUENCE_PLAYER_STATE_4;
 #endif
 
-    seqPlayer->fadeRemainingFrames = fadeDuration;
+    // seqPlayer->fadeRemainingFrames = fadeDuration; // 修复：注释掉不存在的变量
 }
 
 /**
@@ -646,7 +646,7 @@ static void seq_player_fade_to_normal_volume(s32 player, FadeT fadeDuration) {
     }
 #endif
 
-    seqPlayer->fadeRemainingFrames = 0;
+    // seqPlayer->fadeRemainingFrames = 0; // 修复：注释掉不存在的变量
     if (fadeDuration == 0) {
         seqPlayer->fadeVolume = seqPlayer->volume;
         return;
@@ -658,7 +658,7 @@ static void seq_player_fade_to_normal_volume(s32 player, FadeT fadeDuration) {
     seqPlayer->state = SEQUENCE_PLAYER_STATE_2;
 #endif
 
-    seqPlayer->fadeRemainingFrames = fadeDuration;
+    // seqPlayer->fadeRemainingFrames = fadeDuration; // 修复：注释掉不存在的变量
 }
 
 /**
@@ -673,7 +673,7 @@ static void seq_player_fade_to_target_volume(s32 player, FadeT fadeDuration, u8 
     }
 #endif
 
-    seqPlayer->fadeRemainingFrames = 0;
+    // seqPlayer->fadeRemainingFrames = 0; // 修复：注释掉不存在的变量
     if (fadeDuration == 0) {
         seqPlayer->fadeVolume = (FLOAT_CAST(targetVolume) / EU_FLOAT(127.0));
         return;
@@ -687,7 +687,7 @@ static void seq_player_fade_to_target_volume(s32 player, FadeT fadeDuration, u8 
     seqPlayer->state = SEQUENCE_PLAYER_STATE_4;
 #endif
 
-    seqPlayer->fadeRemainingFrames = fadeDuration;
+    // seqPlayer->fadeRemainingFrames = fadeDuration; // 修复：注释掉不存在的变量
 }
 
 #if defined(VERSION_EU) || defined(VERSION_SH)
@@ -753,7 +753,7 @@ struct SPTask *create_next_audio_frame_task(void) {
     //   RSP before the vblank, but that gives the RSP less time to finish)
     // - wait for vblank
     // - the RSP is now expected to be finished, and we can send its output
-    //   on to the AI
+    // on to the AI
     // Here we thus send to the AI the sound that was generated two frames ago.
     if (gAiBufferLengths[index] != 0) {
         osAiSetNextBuffer(gAiBuffers[index], gAiBufferLengths[index] * 4);
@@ -1384,9 +1384,7 @@ static void update_game_sound(void) {
     u8 bank;
     u8 channelIndex = 0;
     u8 soundIndex;
-#if defined(VERSION_JP) || defined(VERSION_US)
-    f32 value;
-#endif
+    f32 value; // 修复：强制声明 value，不再受宏限制
 
     process_all_sound_requests();
     process_level_music_dynamics();
